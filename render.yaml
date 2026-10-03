@@ -1,0 +1,15 @@
+# Render Blueprint: one web service per weekly app.
+# New → Blueprint → select this repository → Apply. Later weeks appear here as new services.
+services:
+  - type: web
+    name: raw-to-ready
+    runtime: python
+    plan: free
+    rootDir: week01-raw-to-ready
+    buildCommand: pip install -r requirements.txt
+    # Render routes traffic to $PORT; bind to all interfaces.
+    startCommand: shiny run app.py --host 0.0.0.0 --port $PORT
+    healthCheckPath: /
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.8
