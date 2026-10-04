@@ -31,9 +31,17 @@ Teaching slides carry a reference diagnosis, so every AI read of them is checked
 | Gemini 3.8 Flash | `gemini-3.8-flash` | `GEMINI_MODEL` |
 | Gemini 3.1 Pro (preview) | `gemini-3.1-pro-preview` | `GEMINI_PRO_MODEL` |
 
-Keys: `ANTHROPIC_API_KEY` and/or `GEMINI_API_KEY`. A model whose key is missing is shown
-as "not configured"; with no keys at all the app runs in demo mode (slides and Learn mode
-work, analysis is disabled). Claude requests use structured outputs and server-side
+### API keys
+
+Visitors can paste their own Anthropic and/or Gemini key under **API keys** in the top
+bar. Each key can be checked with **Test** and is used only for that visitor's session:
+it is never written to disk or logs and is never sent back to the page (only the last
+four characters are shown). Ticking **Remember on this device** keeps it in that
+browser's localStorage. Analyses on a visitor's own key don't count toward the limits below.
+
+The host can also set `ANTHROPIC_API_KEY` and/or `GEMINI_API_KEY` as fallback keys. With
+no key from either source, a model is locked and the app runs in demo mode (slides and
+Learn mode work; analysis is disabled). Claude requests use structured outputs and server-side
 refusal fallbacks (`fallbacks: "default"`).
 
 ## Safeguards
@@ -41,7 +49,7 @@ refusal fallbacks (`fallbacks: "default"`).
 - Images are decoded and re-encoded before analysis, which strips EXIF and other embedded
   metadata; nothing is written to disk.
 - A first-visit notice must be accepted; every report carries the research-use disclaimer.
-- Cost limits for public deployments: `MAX_ANALYSES_PER_SESSION` (default 20) and
+- Cost limits on the host's own keys: `MAX_ANALYSES_PER_SESSION` (default 20) and
   `MAX_ANALYSES_PER_DAY` (default 200).
 
 ## Teaching slides

@@ -102,13 +102,22 @@ def test_missing_key_is_reported_not_raised(monkeypatch):
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     opt = providers.model_options()[0]
     r = providers.analyse(b"x", opt)
-    assert "ANTHROPIC_API_KEY" in r["error"]
+    assert "needs an API key" in r["error"]
+
+
+def test_visitor_key_wins_over_server_key(monkeypatch):
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "server-key-0000000000000000")
+    assert providers.resolve_key("claude") == ("server-key-0000000000000000", "server")
+    assert providers.resolve_key("claude", {"claude": "mine-1111111111111111111"}) == ("mine-1111111111111111111", "you")
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    monkeypatch.delenv("GOOGLE_API_KEY", raising=False)
+    assert not providers.available("gemini") and providers.available("gemini", {"gemini": "g" * 30})
 
 
 class FakeAnthropic:
     calls = []
 
-    def __init__(self, *a, **k):
+    def __init__(self, *a, **k):  # noqa: D107
         self.beta = SimpleNamespace(messages=SimpleNamespace(create=self._create))
 
     def _create(self, **kw):
@@ -119,6 +128,23 @@ class FakeAnthropic:
             usage=SimpleNamespace(input_tokens=1500, output_tokens=700),
             model=kw["model"],
         )
+
+
+class FakeAnthropicKeyed(FakeAnthropic):
+    keys = []
+
+    def __init__(self, api_key=None, **k):
+        FakeAnthropicKeyed.keys.append(api_key)
+        super().__init__()
+
+
+def test_claude_uses_the_visitors_key(monkeypatch):
+    import anthropic
+
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "server-key")
+    monkeypatch.setattr(anthropic, "Anthropic", FakeAnthropicKeyed)
+    r = providers.analyse(b"img", providers.model_options()[0], {"claude": "visitor-key-123456789012"})
+    assert FakeAnthropicKeyed.keys[-1] == "visitor-key-123456789012" and r["key_source"] == "you"
 
 
 def test_claude_request_shape(monkeypatch):

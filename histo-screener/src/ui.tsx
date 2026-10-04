@@ -1,4 +1,5 @@
 import "@/styles.css";
+import "@/keys.css";
 
 import App from "@/App";
 import { applyTheme, readMode, resolve } from "@/theme";

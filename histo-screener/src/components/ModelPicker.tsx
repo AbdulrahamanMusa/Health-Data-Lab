@@ -13,12 +13,12 @@ export function ModelPicker({ models, value, onChange, label = "Model" }: { mode
           disabled={!m.available}
           className={`pick p-${m.provider} ${value === m.id ? "on" : ""}`}
           onClick={() => onChange(m.id)}
-          title={m.available ? m.note : `Not configured: add the ${m.provider === "claude" ? "ANTHROPIC_API_KEY" : "GEMINI_API_KEY"} on the server`}
+          title={m.available ? m.note : `Needs a ${m.provider === "claude" ? "Anthropic" : "Google Gemini"} API key: open API keys at the top`}
         >
           <span className="pick-dot" />
           <span className="pick-text">
             <b>{m.label}</b>
-            <small>{m.available ? m.note : "Not configured"}</small>
+            <small>{m.available ? m.note : "Needs an API key"}</small>
           </span>
           {!m.available && <Lock size={12} />}
         </button>

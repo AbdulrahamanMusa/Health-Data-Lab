@@ -1,7 +1,8 @@
-import { AlertTriangle, Columns2, FileDown, GraduationCap, Microscope, Monitor, Moon, ScanSearch, ShieldAlert, Sparkles, Sun, X } from "lucide-react";
+import { AlertTriangle, Columns2, FileDown, GraduationCap, KeyRound, Microscope, Monitor, Moon, ScanSearch, ShieldAlert, Sparkles, Sun, X } from "lucide-react";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { KeysDialog, readStoredKeys, setSessionKeys } from "@/components/Keys";
 import { Learn } from "@/components/Learn";
 import { ModelPicker, firstAvailable } from "@/components/ModelPicker";
 import { LABEL, ReportView } from "@/components/ReportView";
@@ -62,6 +63,10 @@ function ScreenMode({ meta, ws }: { meta: Meta; ws: Workspace }) {
   const send = useSend();
   const [model, setModel] = useState(() => firstAvailable(meta.models));
   const info = meta.models.find((m) => m.id === model);
+  // When keys change, move off a model that has just become (or stayed) unavailable.
+  useEffect(() => {
+    if (!info?.available && meta.models.some((m) => m.available)) setModel(firstAvailable(meta.models));
+  }, [meta.models, info?.available]);
   const result = ws.case?.results[model];
   const running = ws.running_models.includes(model);
   const anyReport = ws.case && Object.values(ws.case.results).some((r) => r.report);
@@ -123,6 +128,11 @@ function CompareMode({ meta, ws }: { meta: Meta; ws: Workspace }) {
   const [b, setB] = useState(() => firstAvailable(meta.models, "gemini"));
   const ia = meta.models.find((m) => m.id === a);
   const ib = meta.models.find((m) => m.id === b);
+  useEffect(() => {
+    const avail = meta.models.filter((m) => m.available);
+    if (!ia?.available && avail.length) setA(avail[0].id);
+    if (!ib?.available && avail.length) setB((avail.find((m) => m.provider === "gemini") ?? avail[avail.length - 1]).id);
+  }, [meta.models, ia?.available, ib?.available]);
   const ra = ws.case?.results[a];
   const rb = ws.case?.results[b];
   const both = ra?.report && rb?.report;
@@ -182,6 +192,8 @@ function CompareMode({ meta, ws }: { meta: Meta; ws: Workspace }) {
 
 type Toast = ToastMsg & { id: number };
 
+const hasOwnKey = (meta: Meta) => meta.keys.claude.source === "you" || meta.keys.gemini.source === "you";
+
 function Shell() {
   const initialized = useShinyInitialized();
   const meta = useShinyOutputValue<Meta>("meta");
@@ -198,6 +210,21 @@ function Shell() {
   const [toasts, setToasts] = useState<Toast[]>([]);
   const nextId = useRef(0);
   const { handle: uploadFile } = useUpload(meta?.limits.max_upload_mb ?? 12);
+  const [keysOpen, setKeysOpen] = useState(false);
+  const send = useSend();
+
+  // Re-send keys the visitor chose to remember on this device (once, quietly).
+  // Wait for the first server output: by then every input binding is live, so the send can't be dropped.
+  const restored = useRef(false);
+  useEffect(() => {
+    if (!initialized || !meta || restored.current) return;
+    restored.current = true;
+    const stored = readStoredKeys();
+    if (stored && (stored.claude || stored.gemini)) {
+      setSessionKeys(stored);
+      send("set_keys", { ...stored, silent: true });
+    }
+  }, [initialized, meta, send]);
 
   const pushToast = useCallback((t: ToastMsg) => {
     const id = ++nextId.current;
@@ -256,6 +283,11 @@ function Shell() {
           ))}
         </nav>
         <div className="bar-right">
+          <button className={`keybtn ${hasOwnKey(meta) ? "own" : ""}`} onClick={() => setKeysOpen(true)} title="Use your own Anthropic or Gemini API key">
+            <KeyRound size={14} />
+            <span>API keys</span>
+            <i className={`kdot ${hasOwnKey(meta) ? "on" : noModels ? "off" : ""}`} />
+          </button>
           <span className="ruo" title="Research use only">
             <ShieldAlert size={13} /> Research &amp; education only
           </span>
@@ -270,7 +302,10 @@ function Shell() {
       </header>
       {noModels && (
         <div className="banner">
-          <AlertTriangle size={15} /> Demo mode: no AI model is configured on this server yet. You can browse slides and use Learn mode; add ANTHROPIC_API_KEY and/or GEMINI_API_KEY to enable analysis.
+          <AlertTriangle size={15} /> To run AI analysis, add your own Anthropic or Gemini API key. You can browse slides and use Learn mode without one.
+          <button className="btn primary sm" onClick={() => setKeysOpen(true)}>
+            <KeyRound size={14} /> Add API key
+          </button>
         </div>
       )}
       <main className={`main m-${mode}`}>
@@ -282,6 +317,7 @@ function Shell() {
         Teaching slides from Wikimedia Commons:{" "}
         {[...new Set(meta.samples.map((s) => `${s.author} (${s.license})`))].join(" · ")}. AI output may be wrong; not a medical device.
       </footer>
+      {keysOpen && <KeysDialog meta={meta} onClose={() => setKeysOpen(false)} />}
       {!accepted && (
         <Disclaimer
           onAccept={() => {

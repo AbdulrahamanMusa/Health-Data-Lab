@@ -8,7 +8,7 @@ import { useSetShinyInput } from "@/shiny";
  * re-sends an input's value when a hook for it mounts, which would replay the
  * last action whenever a component remounted.
  */
-export type EventId = "analyse" | "select_sample" | "upload" | "open_case" | "export_report";
+export type EventId = "analyse" | "select_sample" | "upload" | "open_case" | "export_report" | "set_keys" | "test_key";
 type Send = (id: EventId, payload: Record<string, unknown>) => void;
 
 const Ctx = createContext<Send>(() => {});
@@ -24,6 +24,8 @@ export function EventsProvider({ children }: { children: ReactNode }) {
     upload: useEvent("upload"),
     open_case: useEvent("open_case"),
     export_report: useEvent("export_report"),
+    set_keys: useEvent("set_keys"),
+    test_key: useEvent("test_key"),
   };
   const send = useMemo<Send>(
     () => (id, payload) => setters[id]({ ...payload, nonce: Date.now() + Math.random() }),

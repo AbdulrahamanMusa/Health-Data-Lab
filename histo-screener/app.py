@@ -30,6 +30,10 @@ current = reactive.value(None)
 used = reactive.value(0)
 running_models = reactive.value([])
 running_case = reactive.value(None)  # the case an in-flight analysis belongs to
+# Visitors' own API keys: this session's memory only. Never written to disk or
+# logs, and never included in any output sent back to the browser.
+user_keys = reactive.value({})
+key_checks = reactive.value({})  # provider -> {"ok": bool, "message": str}
 
 
 def _options():
@@ -69,6 +73,21 @@ def _add_case(prepared: images.Prepared, name: str, source: str, reference: dict
     current.set(cid)
 
 
+def _key_status() -> dict:
+    """What the browser may know about keys: source and a 4-character hint, never the key."""
+    out = {}
+    checks = key_checks()
+    for provider in ("claude", "gemini"):
+        key, source = providers.resolve_key(provider, user_keys())
+        out[provider] = {
+            "source": source,
+            "hint": f"••••{key[-4:]}" if source == "you" and key else None,
+            "server": providers.server_key(provider) is not None,
+            "check": checks.get(provider),
+        }
+    return out
+
+
 # ----------------------------------------------------------------- outputs
 
 
@@ -76,7 +95,8 @@ def _add_case(prepared: images.Prepared, name: str, source: str, reference: dict
 def meta():
     opts = providers.model_options()
     return {
-        "models": [{"id": o.id, "provider": o.provider, "label": o.label, "note": o.note, "available": providers.available(o.provider)} for o in opts],
+        "models": [{"id": o.id, "provider": o.provider, "label": o.label, "note": o.note, "available": providers.available(o.provider, user_keys())} for o in opts],
+        "keys": _key_status(),
         "samples": [{k: s[k] for k in ("id", "thumb", "reference_diagnosis", "reference_label", "site", "author", "license", "license_url", "source_url")} for s in images.samples()],
         "limits": {"per_session": MAX_PER_SESSION, "max_upload_mb": images.MAX_UPLOAD_MB},
     }
@@ -118,9 +138,9 @@ def workspace():
 
 
 @reactive.extended_task
-async def run_analysis(jpeg: bytes, model_ids: list[str]) -> list[dict]:
+async def run_analysis(jpeg: bytes, model_ids: list[str], keys: dict) -> list[dict]:
     opts = _options()
-    jobs = [asyncio.to_thread(providers.analyse, jpeg, opts[m]) for m in model_ids if m in opts]
+    jobs = [asyncio.to_thread(providers.analyse, jpeg, opts[m], keys) for m in model_ids if m in opts]
     return await asyncio.gather(*jobs)
 
 
@@ -131,27 +151,34 @@ async def _analyse():
     if not d or not d.get("models"):
         return
     with reactive.isolate():
-        cid, all_cases, n_used = current(), cases(), used()
+        cid, all_cases, n_used, keys = current(), cases(), used(), dict(user_keys())
     if not cid or cid not in all_cases:
         await toast("Choose an image first", "Pick a sample slide or upload your own.", "warn")
         return
     if run_analysis.status() == "running":
         return
     models = [m for m in d["models"] if m in _options()][:2]
-    if n_used + len(models) > MAX_PER_SESSION:
-        await toast("Session limit reached", f"This demo allows {MAX_PER_SESSION} analyses per visit. Reload the page to start a new session.", "warn")
+    # Limits protect the server owner's bill; visitors using their own keys pay their own way.
+    on_server_key = [m for m in models if providers.resolve_key(_options()[m].provider, keys)[1] != "you"]
+    if not on_server_key:
+        running_models.set(models)
+        running_case.set(cid)
+        run_analysis(all_cases[cid]["jpeg"], models, keys)
+        return
+    if n_used + len(on_server_key) > MAX_PER_SESSION:
+        await toast("Session limit reached", f"The shared demo key allows {MAX_PER_SESSION} analyses per visit. Add your own API key to keep going.", "warn")
         return
     today = date.today()
     if _daily["day"] != today:
         _daily.update(day=today, count=0)
-    if _daily["count"] + len(models) > MAX_PER_DAY:
-        await toast("Daily limit reached", "The public demo has reached today's analysis limit. Please try again tomorrow.", "warn")
+    if _daily["count"] + len(on_server_key) > MAX_PER_DAY:
+        await toast("Daily limit reached", "The shared demo key has reached today's limit. Add your own API key to keep going.", "warn")
         return
-    _daily["count"] += len(models)
-    used.set(n_used + len(models))
+    _daily["count"] += len(on_server_key)
+    used.set(n_used + len(on_server_key))
     running_models.set(models)
     running_case.set(cid)
-    run_analysis(all_cases[cid]["jpeg"], models)
+    run_analysis(all_cases[cid]["jpeg"], models, keys)
 
 
 @reactive.effect
@@ -224,3 +251,48 @@ async def _export():
         return
     page = report.render(case, list(case["results"].values()))
     await send_message(session, "download", {"filename": f"histology-screening-{case['id']}.html", "text": page, "mime": "text/html"})
+
+
+def _clean_key(v) -> str:
+    v = str(v or "").strip()
+    return v if 20 <= len(v) <= 300 and v.isprintable() and " " not in v else ""
+
+
+@reactive.effect
+@reactive.event(input.set_keys)
+async def _set_keys():
+    d = input.set_keys()
+    if not d:
+        return
+    keys = {p: _clean_key(d.get(p)) for p in ("claude", "gemini")}
+    rejected = [p for p in ("claude", "gemini") if d.get(p) and not keys[p]]
+    user_keys.set({p: k for p, k in keys.items() if k})
+    with reactive.isolate():
+        checks = dict(key_checks())
+    key_checks.set({p: c for p, c in checks.items() if keys.get(p)})
+    if rejected:
+        await toast("Key not accepted", "That doesn't look like an API key. Paste the whole key without spaces.", "danger")
+    elif d.get("silent"):
+        return
+    elif any(keys.values()):
+        await toast("API keys saved for this session", "Your requests are billed to your own account.", "ok")
+    else:
+        await toast("API keys cleared", "", "info")
+
+
+@reactive.effect
+@reactive.event(input.test_key)
+async def _test_key():
+    d = input.test_key()
+    if not d or d.get("provider") not in ("claude", "gemini"):
+        return
+    with reactive.isolate():
+        key, source = providers.resolve_key(d["provider"], user_keys())
+    if source != "you":
+        await toast("Save the key first", "Add your key and press Save, then test it.", "warn")
+        return
+    ok, message = await asyncio.to_thread(providers.verify_key, d["provider"], key)
+    with reactive.isolate():
+        checks = dict(key_checks())
+    checks[d["provider"]] = {"ok": ok, "message": message}
+    key_checks.set(checks)

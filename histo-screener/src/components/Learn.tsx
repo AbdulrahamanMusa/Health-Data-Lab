@@ -82,7 +82,7 @@ export function Learn({ meta, ws, model }: { meta: Meta; ws: Workspace; model: s
           )}
           <div className="quiz-actions">
             {guess && !ai && (
-              <button className="btn primary" disabled={running || !modelInfo?.available} onClick={() => send("analyse", { models: [model] })} title={modelInfo?.available ? "" : "Model not configured on this server"}>
+              <button className="btn primary" disabled={running || !modelInfo?.available} onClick={() => send("analyse", { models: [model] })} title={modelInfo?.available ? "" : "Add an API key under API keys to enable this"}>
                 <Sparkles size={15} /> Ask {modelInfo?.label ?? "the AI"} to explain
               </button>
             )}

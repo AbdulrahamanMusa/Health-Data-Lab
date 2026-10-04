@@ -23,8 +23,16 @@ export interface Sample {
   source_url: string;
 }
 
+export interface KeyStatus {
+  source: "you" | "server" | null;
+  hint: string | null;
+  server: boolean;
+  check: { ok: boolean; message: string } | null;
+}
+
 export interface Meta {
   models: ModelInfo[];
+  keys: Record<"claude" | "gemini", KeyStatus>;
   samples: Sample[];
   limits: { per_session: number; max_upload_mb: number };
 }
