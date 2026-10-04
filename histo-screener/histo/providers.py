@@ -216,6 +216,26 @@ def _gemini_error(e) -> None:
     raise AnalysisError(f"Gemini's servers are busy or failed after several retries. Try again shortly, or switch model. ({detail})") from e
 
 
+# Small local models sometimes repeat themselves until they run out of tokens.
+# Ollama enforces these bounds while generating, so a loop ends early instead.
+_LOCAL_MAX_ITEMS = {"features": 8, "differential": 4, "teaching_points": 4, "next_steps": 4, "limitations": 4}
+
+
+def _bounded(schema: dict, key: str = "") -> dict:
+    out = dict(schema)
+    if out.get("type") == "object":
+        out["properties"] = {k: _bounded(v, k) for k, v in out["properties"].items()}
+    elif out.get("type") == "array":
+        out["items"] = _bounded(out["items"])
+        out["maxItems"] = _LOCAL_MAX_ITEMS.get(key, 6)
+    elif out.get("type") == "string" and "enum" not in out:
+        out["maxLength"] = 600
+    return out
+
+
+LOCAL_SCHEMA = _bounded(SCHEMA)
+
+
 def _medgemma(image: bytes, model: str, _key: str) -> tuple[dict, dict]:
     import httpx
 
@@ -225,7 +245,7 @@ def _medgemma(image: bytes, model: str, _key: str) -> tuple[dict, dict]:
             {"role": "system", "content": SYSTEM},
             {"role": "user", "content": USER, "images": [base64.standard_b64encode(image).decode()]},
         ],
-        "format": SCHEMA,  # Ollama constrains the output to this JSON schema
+        "format": LOCAL_SCHEMA,  # Ollama constrains the output to this JSON schema
         "stream": False,
         "keep_alive": "15m",
         "options": {"temperature": 0.2, "num_ctx": 8192, "num_predict": 2500},

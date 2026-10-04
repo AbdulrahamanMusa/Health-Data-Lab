@@ -251,5 +251,17 @@ def test_medgemma_request_shape(monkeypatch):
     r = providers.analyse(images.sample_image("lipoma").jpeg, _medgemma_opt())
     assert r["report"]["classification"]["label"] == "malignant" and r["key_source"] == "local"
     body = seen["body"]
-    assert seen["url"].endswith("/api/chat") and body["model"] == "medgemma:4b" and body["format"] == prompt.SCHEMA
+    assert seen["url"].endswith("/api/chat") and body["model"] == "medgemma:4b" and body["format"] == providers.LOCAL_SCHEMA
     assert body["messages"][0]["role"] == "system" and len(body["messages"][1]["images"]) == 1
+
+
+def test_local_schema_is_bounded_but_same_shape():
+    loc = providers.LOCAL_SCHEMA
+    assert loc["properties"]["features"]["maxItems"] == 8 and "maxItems" not in prompt.SCHEMA["properties"]["features"]
+    assert loc["properties"]["classification"]["properties"]["summary"]["maxLength"] == 600
+    assert "maxLength" not in loc["properties"]["classification"]["properties"]["label"]
+
+    def keys(s):
+        return {k: keys(v) for k, v in s.get("properties", {}).items()} if s.get("type") == "object" else keys(s["items"]) if s.get("type") == "array" else None
+
+    assert keys(loc) == keys(prompt.SCHEMA)
