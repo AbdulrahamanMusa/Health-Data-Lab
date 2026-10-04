@@ -11,11 +11,14 @@ from __future__ import annotations
 
 import base64
 import json
+import logging
 import os
 import time
 from dataclasses import dataclass
 
 from .prompt import SCHEMA, SYSTEM, USER, normalise
+
+log = logging.getLogger("histo")
 
 
 @dataclass(frozen=True)
@@ -128,7 +131,9 @@ def _gemini(image: bytes, model: str, api_key: str) -> tuple[dict, dict]:
     from google import genai
     from google.genai import errors, types
 
-    client = genai.Client(api_key=api_key)
+    # Busy (429) and server (5xx) errors are usually transient: retry with backoff.
+    retry = types.HttpRetryOptions(attempts=4, initial_delay=2, max_delay=20, http_status_codes=[429, 500, 502, 503, 504])
+    client = genai.Client(api_key=api_key, http_options=types.HttpOptions(retry_options=retry, timeout=180_000))
     try:
         response = client.models.generate_content(
             model=model,
@@ -137,16 +142,13 @@ def _gemini(image: bytes, model: str, api_key: str) -> tuple[dict, dict]:
                 system_instruction=SYSTEM,
                 response_mime_type="application/json",
                 response_json_schema=SCHEMA,
+                automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True),
             ),
         )
-    except errors.ClientError as e:
-        if getattr(e, "code", None) in (401, 403):
-            raise AnalysisError("The Gemini API key was rejected. Check the key under API keys.") from e
-        if getattr(e, "code", None) == 429:
-            raise AnalysisError("Gemini is rate-limited right now. Try again in a minute.") from e
-        raise AnalysisError(f"Gemini could not process this request: {e}") from e
-    except errors.ServerError as e:
-        raise AnalysisError("Gemini returned a server error. Try again shortly.") from e
+    except errors.APIError as e:
+        # Status and Google's message only; neither contains the key.
+        log.warning("Gemini %s failed: %s %s %s", model, e.code, e.status, (e.message or "")[:300])
+        _gemini_error(e)
     if not response.text:
         raise AnalysisError("Gemini returned no report (the image may have been blocked).")
     meta = response.usage_metadata
@@ -156,6 +158,21 @@ def _gemini(image: bytes, model: str, api_key: str) -> tuple[dict, dict]:
         "served_by": model,
     }
     return json.loads(response.text), usage
+
+
+def _gemini_error(e) -> None:
+    from google.genai import errors
+
+    detail = f"{e.code} {e.status or ''}: {(e.message or '').strip()[:200]}".strip()
+    if isinstance(e, errors.ClientError):
+        if e.code in (401, 403):
+            raise AnalysisError("The Gemini API key was rejected. Check the key under API keys.") from e
+        if e.code == 429:
+            raise AnalysisError(f"Gemini rate limit or quota reached for this key. Wait a minute, or try the other Gemini model. ({detail})") from e
+        if e.code == 404:
+            raise AnalysisError(f"This Gemini model isn't available to your key. Try the other Gemini model. ({detail})") from e
+        raise AnalysisError(f"Gemini could not process this request. ({detail})") from e
+    raise AnalysisError(f"Gemini's servers are busy or failed after several retries. Try again shortly, or switch model. ({detail})") from e
 
 
 def analyse(image: bytes, option: ModelOption, user_keys: dict | None = None) -> dict:

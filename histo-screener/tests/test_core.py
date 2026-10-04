@@ -188,8 +188,9 @@ def test_gemini_request_shape(monkeypatch):
             return SimpleNamespace(text=json.dumps(GOOD), usage_metadata=SimpleNamespace(prompt_token_count=900, candidates_token_count=400))
 
     class FakeClient:
-        def __init__(self, api_key=None):
+        def __init__(self, api_key=None, http_options=None):
             seen["api_key"] = api_key
+            seen["retry"] = http_options.retry_options
             self.models = FakeModels()
 
     monkeypatch.setenv("GEMINI_API_KEY", "g-test")
@@ -200,3 +201,15 @@ def test_gemini_request_shape(monkeypatch):
     assert seen["model"] == "gemini-3.8-flash"
     cfg = seen["config"]
     assert cfg.response_mime_type == "application/json" and cfg.response_json_schema == prompt.SCHEMA
+    assert seen["retry"].attempts > 1 and 503 in seen["retry"].http_status_codes
+
+
+def test_gemini_errors_are_explained():
+    from google.genai import errors
+
+    busy = errors.ServerError(503, {"error": {"code": 503, "status": "UNAVAILABLE", "message": "The model is overloaded."}})
+    with pytest.raises(providers.AnalysisError, match="503 UNAVAILABLE: The model is overloaded"):
+        providers._gemini_error(busy)
+    quota = errors.ClientError(429, {"error": {"code": 429, "status": "RESOURCE_EXHAUSTED", "message": "Quota exceeded."}})
+    with pytest.raises(providers.AnalysisError, match="quota reached"):
+        providers._gemini_error(quota)
