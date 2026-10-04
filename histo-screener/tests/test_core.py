@@ -213,3 +213,43 @@ def test_gemini_errors_are_explained():
     quota = errors.ClientError(429, {"error": {"code": 429, "status": "RESOURCE_EXHAUSTED", "message": "Quota exceeded."}})
     with pytest.raises(providers.AnalysisError, match="quota reached"):
         providers._gemini_error(quota)
+
+
+def _medgemma_opt():
+    return next(o for o in providers.model_options() if o.provider == "medgemma")
+
+
+def test_medgemma_unavailable_without_ollama():
+    assert providers.local_status()["reason"] == "not_running"
+    assert not providers.available("medgemma")
+    r = providers.analyse(b"img", _medgemma_opt())
+    assert "ollama pull medgemma:4b" in r["error"]
+
+
+def test_medgemma_request_shape(monkeypatch):
+    import httpx
+
+    seen = {}
+
+    class Resp:
+        def __init__(self, status, data):
+            self.status_code, self._data, self.headers = status, data, {"content-type": "application/json"}
+
+        def json(self):
+            return self._data
+
+    def fake_get(url, timeout):
+        return Resp(200, {"models": [{"name": "medgemma:4b", "model": "medgemma:4b"}]})
+
+    def fake_post(url, json, timeout):
+        seen.update(url=url, body=json)
+        return Resp(200, {"message": {"content": __import__("json").dumps(GOOD)}, "done_reason": "stop", "prompt_eval_count": 300, "eval_count": 500})
+
+    monkeypatch.setattr(httpx, "get", fake_get)
+    monkeypatch.setattr(httpx, "post", fake_post)
+    assert providers.local_status()["ready"] and providers.resolve_key("medgemma") == ("local", "local")
+    r = providers.analyse(images.sample_image("lipoma").jpeg, _medgemma_opt())
+    assert r["report"]["classification"]["label"] == "malignant" and r["key_source"] == "local"
+    body = seen["body"]
+    assert seen["url"].endswith("/api/chat") and body["model"] == "medgemma:4b" and body["format"] == prompt.SCHEMA
+    assert body["messages"][0]["role"] == "system" and len(body["messages"][1]["images"]) == 1

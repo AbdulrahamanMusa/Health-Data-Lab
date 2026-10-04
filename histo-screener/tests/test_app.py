@@ -41,13 +41,16 @@ def wait_results(s, n, timeout=10):
 
 def test_meta_lists_models_samples_and_availability(local_server, monkeypatch):
     m = out(local_server, "meta")
-    assert {x["provider"] for x in m["models"]} == {"claude", "gemini"}
+    assert {x["provider"] for x in m["models"]} == {"claude", "gemini", "medgemma"}
+    assert m["local"]["ready"] is False and m["local"]["reason"] == "not_running"
     assert len(m["samples"]) == 7
     assert all(isinstance(x["available"], bool) for x in m["models"])
 
 
 def test_compare_two_models_on_a_sample(local_server, monkeypatch):
     monkeypatch.setattr(providers, "analyse", fake_analyse)
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "host-key-claude")  # host keys count toward the limits
+    monkeypatch.setenv("GEMINI_API_KEY", "host-key-gemini")
     local_server.set_inputs(select_sample={"id": "fibroadenoma", "nonce": 1})
     ws = out(local_server, "workspace")
     assert ws["case"]["source"] == "sample" and ws["case"]["reference"]["reference_label"] == "benign"

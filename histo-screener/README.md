@@ -1,9 +1,10 @@
 # Histopathology Screener
 
 AI-assisted screening of histology images for **research and medical education**.
-Two vision models, **Claude** (Anthropic) and **Gemini** (Google), read the same slide
-with the same instructions and fill the same structured report, so their answers can
-be compared side by side.
+Vision models read the same slide with the same instructions and fill the same
+structured report, so their answers can be compared side by side: **Claude**
+(Anthropic) and **Gemini** (Google) through their APIs, and **MedGemma**, Google's free
+open medical model, running locally with no API key.
 
 > Not a medical device. Output is not a diagnosis and must not be used for clinical
 > decisions. Diagnosis requires a qualified pathologist reviewing the full specimen.
@@ -30,6 +31,26 @@ Teaching slides carry a reference diagnosis, so every AI read of them is checked
 | Claude Sonnet 5.5 | `claude-sonnet-5-5` | `CLAUDE_FAST_MODEL` |
 | Gemini 3.8 Flash | `gemini-3.8-flash` | `GEMINI_MODEL` |
 | Gemini 3.1 Pro (preview) | `gemini-3.1-pro-preview` | `GEMINI_PRO_MODEL` |
+| MedGemma 4B (local) | `medgemma:4b` | `MEDGEMMA_MODEL` |
+
+### MedGemma: free and local
+
+[MedGemma](https://huggingface.co/collections/google/medgemma-release) runs through
+[Ollama](https://ollama.com) on the machine that runs the app, so slides never leave that
+machine and there is no per-call cost:
+
+```bash
+ollama pull medgemma:4b      # about 3.3 GB, once
+python -m shiny run app.py   # MedGemma appears as ready within 15 seconds
+```
+
+Ollama is expected at `http://127.0.0.1:11434`; set `OLLAMA_HOST` to use another machine
+(for example a GPU server). On a CPU-only computer a report takes a few minutes; a GPU makes
+it seconds. Free web hosts such as Render's free plan don't have the memory to run it, so on
+the hosted demo the option shows setup steps instead. MedGemma is a 4B model: expect weaker
+answers than the large API models, and treat it, like them, as a teaching aid.
+Its use is governed by Google's
+[Health AI Developer Foundations terms](https://developers.google.com/health-ai-developer-foundations/terms).
 
 ### API keys
 
@@ -49,8 +70,8 @@ refusal fallbacks (`fallbacks: "default"`).
 - Images are decoded and re-encoded before analysis, which strips EXIF and other embedded
   metadata; nothing is written to disk.
 - A first-visit notice must be accepted; every report carries the research-use disclaimer.
-- Cost limits on the host's own keys: `MAX_ANALYSES_PER_SESSION` (default 20) and
-  `MAX_ANALYSES_PER_DAY` (default 200).
+- Cost limits apply only to the host's own API keys (visitor keys and MedGemma are
+  unlimited): `MAX_ANALYSES_PER_SESSION` (default 20) and `MAX_ANALYSES_PER_DAY` (default 200).
 
 ## Teaching slides
 

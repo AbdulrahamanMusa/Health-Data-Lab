@@ -183,15 +183,28 @@ button:focus-visible, [role="button"]:focus-visible, input:focus-visible { outli
 .panel-body { flex: 1; overflow-y: auto; padding: 16px; background: var(--paper); }
 .panel-foot { display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; border-top: 1px solid var(--line); }
 .quota { font-size: 11.5px; color: var(--muted); text-align: center; }
-.picker { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
-.pick { position: relative; display: flex; align-items: flex-start; gap: 8px; padding: 8px 10px; border-radius: var(--r-sm); border: 1px solid var(--line-2); background: var(--surface); cursor: pointer; text-align: left; transition: border-color 0.15s, background 0.15s; }
-.pick:hover:not(:disabled) { border-color: var(--hema); }
-.pick.on { border-color: var(--hema); background: var(--hema-soft); box-shadow: inset 0 0 0 1px var(--hema); }
-.pick:disabled { opacity: 0.55; cursor: not-allowed; }
-.pick svg { position: absolute; top: 8px; right: 8px; color: var(--muted); }
+/* Model dropdown */
+.picker { position: relative; }
+.picker-btn { width: 100%; display: flex; align-items: flex-start; gap: 9px; padding: 8px 10px; border-radius: var(--r-sm); border: 1px solid var(--line-2); background: var(--surface); color: inherit; font: inherit; cursor: pointer; text-align: left; transition: border-color 0.15s, box-shadow 0.15s; }
+.picker-btn:hover, .picker.open .picker-btn { border-color: var(--hema); }
+.picker-btn:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--hema-soft); border-color: var(--hema); }
+.picker-btn .pick-text { flex: 1; min-width: 0; }
+.picker-btn .chev { align-self: center; color: var(--muted); flex-shrink: 0; transition: transform 0.15s; }
+.picker.open .chev { transform: rotate(180deg); }
+.picker-menu { position: absolute; z-index: 40; top: calc(100% + 4px); left: 0; right: 0; margin: 0; padding: 4px; list-style: none; background: var(--surface); border: 1px solid var(--line-2); border-radius: var(--r-sm); box-shadow: 0 12px 32px rgba(40, 20, 45, 0.18); max-height: min(360px, 60vh); overflow-y: auto; outline: none; animation: rise 0.12s ease-out; }
+.pick { display: flex; align-items: flex-start; gap: 9px; padding: 8px 10px; border-radius: 6px; cursor: pointer; }
+.pick.active { background: var(--surface-2); }
+.pick.on { background: var(--hema-soft); }
+.pick.locked { cursor: not-allowed; }
+.pick.locked .pick-text, .pick.locked .pick-dot { opacity: 0.5; }
+.pick .pick-text { flex: 1; min-width: 0; }
+.pick-vendor { align-self: center; font-size: 10.5px; color: var(--muted); white-space: nowrap; }
+.pick-mark { align-self: center; width: 14px; flex-shrink: 0; color: var(--hema); }
+.pick.locked .pick-mark { color: var(--muted); }
 .pick-dot { width: 9px; height: 9px; border-radius: 50%; margin-top: 5px; flex-shrink: 0; }
 .p-claude .pick-dot { background: #d97757; }
 .p-gemini .pick-dot { background: #4f8df5; }
+.p-medgemma .pick-dot { background: #1f9e89; }
 .pick-text b { display: block; font-size: 12.5px; font-weight: 600; line-height: 1.3; }
 .pick-text small { display: block; font-size: 11px; color: var(--muted); }
 .others { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 12px; font-size: 12px; color: var(--muted); }
@@ -279,9 +292,8 @@ button:focus-visible, [role="button"]:focus-visible, input:focus-visible { outli
 .agree.no { color: var(--malignant); background: color-mix(in srgb, var(--malignant) 9%, var(--surface)); }
 .compare-cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; align-items: start; }
 .col { display: flex; flex-direction: column; gap: 10px; }
-.col-head { display: flex; flex-direction: column; gap: 6px; }
+.col-head { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 12px; }
 .col-tag { font-size: 11px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: var(--eosin); }
-.col .picker { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 
 /* ===================================================================
    Learn
@@ -343,7 +355,6 @@ button:focus-visible, [role="button"]:focus-visible, input:focus-visible { outli
    =================================================================== */
 @media (max-width: 1280px) {
   .screen { grid-template-columns: 240px minmax(0, 1fr) 380px; }
-  .col .picker { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 1024px) {
   .bar { grid-template-columns: 1fr auto; height: auto; padding: 10px 16px; row-gap: 8px; }
@@ -360,7 +371,7 @@ button:focus-visible, [role="button"]:focus-visible, input:focus-visible { outli
   .brand span { display: none; }
   .modes button span { display: none; }
   .modes button { padding: 8px 14px; }
-  .picker, .col .picker { grid-template-columns: 1fr; }
+  .pick-vendor { display: none; }
   .kv { grid-template-columns: 1fr; }
   .compare, .learn { padding: 14px; }
   .answers { grid-template-columns: 1fr; }

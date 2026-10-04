@@ -38,3 +38,16 @@
 .spin { animation: spin 0.9s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (max-width: 560px) { .keybtn span { display: none; } }
+
+/* Local model card */
+.keyfield.local .kf-head b { display: flex; align-items: center; gap: 6px; }
+.local-note { margin: 8px 0 0; font-size: 13px; line-height: 1.5; color: var(--muted, #6b6070); }
+.local-note svg { vertical-align: -2px; color: #1f9e89; }
+.local-steps { margin: 8px 0 0; padding-left: 20px; font-size: 13px; line-height: 1.6; }
+.local-steps li { margin: 2px 0; }
+.local-steps li.muted { list-style: none; margin-left: -20px; margin-top: 6px; font-size: 12px; opacity: .8; }
+.local-steps em { font-style: normal; color: #1f9e89; }
+.local-steps a { color: inherit; }
+.cmd { display: inline-flex; align-items: center; gap: 8px; padding: 2px 8px; border-radius: 6px; border: 1px solid var(--line, rgba(0,0,0,.12)); background: var(--surface-2, rgba(0,0,0,.04)); cursor: pointer; font: inherit; color: inherit; max-width: 100%; }
+.cmd code { font-size: 12px; white-space: nowrap; }
+.cmd small { font-size: 11px; opacity: .7; }

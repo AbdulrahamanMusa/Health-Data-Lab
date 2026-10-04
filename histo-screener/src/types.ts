@@ -3,9 +3,11 @@
 export type Label = "benign" | "malignant" | "indeterminate" | "not_assessable";
 export type Significance = "favours_benign" | "favours_malignant" | "neutral";
 
+export type Provider = "claude" | "gemini" | "medgemma";
+
 export interface ModelInfo {
   id: string;
-  provider: "claude" | "gemini";
+  provider: Provider;
   label: string;
   note: string;
   available: boolean;
@@ -33,6 +35,7 @@ export interface KeyStatus {
 export interface Meta {
   models: ModelInfo[];
   keys: Record<"claude" | "gemini", KeyStatus>;
+  local: { ready: boolean; model: string; reason: "not_running" | "not_downloaded" | null; host_is_local: boolean };
   samples: Sample[];
   limits: { per_session: number; max_upload_mb: number };
 }
@@ -51,7 +54,7 @@ export interface Report {
 export interface Result {
   model: string;
   label: string;
-  provider: "claude" | "gemini";
+  provider: Provider;
   report?: Report;
   error?: string;
   usage?: { input_tokens?: number; output_tokens?: number; served_by?: string };

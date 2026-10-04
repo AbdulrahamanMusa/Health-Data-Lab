@@ -1,4 +1,4 @@
-import { CheckCircle2, ExternalLink, Eye, EyeOff, KeyRound, Loader2, ShieldCheck, X, XCircle } from "lucide-react";
+import { CheckCircle2, Cpu, ExternalLink, Eye, EyeOff, KeyRound, Loader2, ShieldCheck, X, XCircle } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { useSend } from "@/events";
@@ -96,6 +96,57 @@ function KeyField({ provider, value, onChange, status }: { provider: Provider; v
   );
 }
 
+/** MedGemma needs no key: it runs through Ollama on the machine hosting the app. */
+function LocalModelCard({ local }: { local: Meta["local"] }) {
+  const [copied, setCopied] = useState(false);
+  const cmd = `ollama pull ${local.model}`;
+  return (
+    <div className="keyfield local">
+      <div className="kf-head">
+        <div>
+          <b>
+            <Cpu size={14} /> MedGemma (free, open model)
+          </b>
+          <small>Google's medical model · runs locally, no key, no cost</small>
+        </div>
+        {local.ready ? <span className="kf-state you">Ready</span> : <span className="kf-state none">Not set up</span>}
+      </div>
+      {local.ready ? (
+        <p className="local-note">
+          <CheckCircle2 size={13} /> <b>{local.model}</b> is running on this computer through Ollama. Images analysed with it never leave the machine. On a computer without a GPU a report can take a few minutes.
+        </p>
+      ) : !local.host_is_local ? (
+        <p className="local-note">The app's server can't reach its MedGemma service right now. Check that Ollama is running at the configured address.</p>
+      ) : (
+        <ol className="local-steps">
+          <li>
+            Install Ollama from{" "}
+            <a href="https://ollama.com/download" target="_blank" rel="noopener noreferrer">
+              ollama.com/download <ExternalLink size={11} />
+            </a>{" "}
+            {local.reason === "not_downloaded" && <em>(done: Ollama is running)</em>}
+          </li>
+          <li>
+            Download the model (about 3.3 GB):{" "}
+            <button
+              type="button"
+              className="cmd"
+              title="Copy command"
+              onClick={() => {
+                navigator.clipboard?.writeText(cmd).then(() => setCopied(true), () => {});
+              }}
+            >
+              <code>{cmd}</code> <small>{copied ? "copied" : "copy"}</small>
+            </button>
+          </li>
+          <li>Leave Ollama running. This app picks the model up within 15 seconds.</li>
+          <li className="muted">On the hosted demo this isn't available: MedGemma runs on the computer that runs the app, so run the app on your own computer to use it.</li>
+        </ol>
+      )}
+    </div>
+  );
+}
+
 export function KeysDialog({ meta, onClose }: { meta: Meta; onClose: () => void }) {
   const send = useSend();
   const stored = readStoredKeys();
@@ -123,9 +174,10 @@ export function KeysDialog({ meta, onClose }: { meta: Meta; onClose: () => void 
           <KeyRound size={22} />
         </div>
         <h2 id="keys-title">Use your own API keys</h2>
-        <p>Add a key for either provider (or both). Analyses then run on your own account, with no shared limits.</p>
+        <p>Add a key for either provider (or both). Analyses then run on your own account, with no shared limits. Or use MedGemma, the free open model, with no key at all.</p>
         <KeyField provider="claude" value={draft.claude} onChange={(v) => setDraft({ ...draft, claude: v })} status={k.claude} />
         <KeyField provider="gemini" value={draft.gemini} onChange={(v) => setDraft({ ...draft, gemini: v })} status={k.gemini} />
+        <LocalModelCard local={meta.local} />
         <label className="check">
           <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
           <span>

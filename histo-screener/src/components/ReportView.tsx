@@ -120,7 +120,7 @@ export function ReportView({ result, running, modelLabel, compact }: { result?: 
         <div className="rp-wait">
           <Microscope size={26} />
           <b>{modelLabel} is reading the slide…</b>
-          <span className="muted">This usually takes 10–40 seconds.</span>
+          <span className="muted">{modelLabel?.includes("(local)") ? "Running on this computer: without a GPU this takes about 3–5 minutes." : "This usually takes 10–40 seconds."}</span>
           <div className="shimmer-lines">
             <i />
             <i />

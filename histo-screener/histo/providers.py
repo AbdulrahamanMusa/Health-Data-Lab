@@ -1,10 +1,14 @@
-"""Model providers: Claude (Anthropic) and Gemini (Google), behind one function.
+"""Model providers: Claude (Anthropic), Gemini (Google) and MedGemma (local), behind one function.
 
 Each call sends one prepared JPEG plus the shared instructions and gets back
 the shared JSON report. API keys come from the visitor (their own key, held in
 their session only) or from the server environment (ANTHROPIC_API_KEY,
 GEMINI_API_KEY); a visitor's own key always wins. Model IDs can be overridden
 in the environment.
+
+MedGemma is Google's open medical model. It runs on the host machine through
+Ollama (OLLAMA_HOST, default http://127.0.0.1:11434), so it needs no API key
+and has no per-call cost; it is offered only when Ollama has the model.
 """
 
 from __future__ import annotations
@@ -24,7 +28,7 @@ log = logging.getLogger("histo")
 @dataclass(frozen=True)
 class ModelOption:
     id: str  # the provider's model ID
-    provider: str  # "claude" or "gemini"
+    provider: str  # "claude", "gemini" or "medgemma"
     label: str
     note: str
 
@@ -35,7 +39,42 @@ def model_options() -> list[ModelOption]:
         ModelOption(os.environ.get("CLAUDE_FAST_MODEL", "claude-sonnet-5-5"), "claude", "Claude Sonnet 5.5", "Faster, lower cost"),
         ModelOption(os.environ.get("GEMINI_MODEL", "gemini-3.8-flash"), "gemini", "Gemini 3.8 Flash", "Fast multimodal"),
         ModelOption(os.environ.get("GEMINI_PRO_MODEL", "gemini-3.1-pro-preview"), "gemini", "Gemini 3.1 Pro (preview)", "Deeper analysis"),
+        ModelOption(medgemma_model(), "medgemma", "MedGemma 4B (local)", "Open model on this computer · free"),
     ]
+
+
+# ----------------------------------------------------------------- local model (Ollama)
+
+def medgemma_model() -> str:
+    return os.environ.get("MEDGEMMA_MODEL", "medgemma:4b")
+
+
+def ollama_host() -> str:
+    return os.environ.get("OLLAMA_HOST", "http://127.0.0.1:11434").rstrip("/")
+
+
+_local_cache: dict = {"at": 0.0, "status": None}
+
+
+def local_status(max_age: float = 10.0) -> dict:
+    """Is the local model ready? Cached briefly: this runs on every page refresh."""
+    if _local_cache["status"] is not None and time.monotonic() - _local_cache["at"] < max_age:
+        return _local_cache["status"]
+    import httpx
+
+    model = medgemma_model()
+    try:
+        tags = httpx.get(f"{ollama_host()}/api/tags", timeout=2).json()
+        names = {m.get("name") for m in tags.get("models", [])} | {m.get("model") for m in tags.get("models", [])}
+        wanted = {model, model if ":" in model else f"{model}:latest"}
+        if names & wanted:
+            status = {"ready": True, "model": model, "reason": None}
+        else:
+            status = {"ready": False, "model": model, "reason": "not_downloaded"}
+    except Exception:  # noqa: BLE001 - Ollama not installed, not running or unreachable
+        status = {"ready": False, "model": model, "reason": "not_running"}
+    _local_cache.update(at=time.monotonic(), status=status)
+    return status
 
 
 def server_key(provider: str) -> str | None:
@@ -45,7 +84,9 @@ def server_key(provider: str) -> str | None:
 
 
 def resolve_key(provider: str, user_keys: dict | None = None) -> tuple[str | None, str | None]:
-    """(key, source): the visitor's own key first, then the server's."""
+    """(key, source): the visitor's own key first, then the server's. The local model needs none."""
+    if provider == "medgemma":
+        return ("local", "local") if local_status()["ready"] else (None, None)
     own = (user_keys or {}).get(provider)
     if own:
         return own, "you"
@@ -175,15 +216,52 @@ def _gemini_error(e) -> None:
     raise AnalysisError(f"Gemini's servers are busy or failed after several retries. Try again shortly, or switch model. ({detail})") from e
 
 
+def _medgemma(image: bytes, model: str, _key: str) -> tuple[dict, dict]:
+    import httpx
+
+    body = {
+        "model": model,
+        "messages": [
+            {"role": "system", "content": SYSTEM},
+            {"role": "user", "content": USER, "images": [base64.standard_b64encode(image).decode()]},
+        ],
+        "format": SCHEMA,  # Ollama constrains the output to this JSON schema
+        "stream": False,
+        "keep_alive": "15m",
+        "options": {"temperature": 0.2, "num_ctx": 8192, "num_predict": 2500},
+    }
+    try:
+        # CPU-only machines can take a few minutes for one report.
+        r = httpx.post(f"{ollama_host()}/api/chat", json=body, timeout=httpx.Timeout(900, connect=5))
+    except httpx.ConnectError as e:
+        raise AnalysisError("The local model isn't reachable. Start Ollama and try again.") from e
+    except httpx.TimeoutException as e:
+        raise AnalysisError("The local model took too long. A GPU, or a smaller image, makes it faster.") from e
+    if r.status_code == 404:
+        raise AnalysisError(f"MedGemma isn't downloaded yet. Run: ollama pull {model}")
+    if r.status_code >= 400:
+        detail = (r.json().get("error") if r.headers.get("content-type", "").startswith("application/json") else r.text) or ""
+        log.warning("MedGemma %s failed: %s %s", model, r.status_code, str(detail)[:300])
+        raise AnalysisError(f"The local model failed ({r.status_code}: {str(detail)[:200]}).")
+    data = r.json()
+    if data.get("done_reason") == "length":
+        raise AnalysisError("MedGemma's report was cut off. Try again.")
+    usage = {"input_tokens": data.get("prompt_eval_count"), "output_tokens": data.get("eval_count"), "served_by": f"{model} (local)"}
+    return json.loads(data["message"]["content"]), usage
+
+
 def analyse(image: bytes, option: ModelOption, user_keys: dict | None = None) -> dict:
     """Run one model; always returns a dict (with "error" on failure)."""
     started = time.monotonic()
     key, source = resolve_key(option.provider, user_keys)
+    if key is None and option.provider == "medgemma":
+        return {"model": option.id, "label": option.label, "provider": option.provider, "error": f"{option.label} isn't available. Start Ollama and run: ollama pull {option.id}"}
     if key is None:
         vendor = "Anthropic" if option.provider == "claude" else "Google Gemini"
         return {"model": option.id, "label": option.label, "provider": option.provider, "error": f"{option.label} needs an API key. Add your {vendor} key under API keys."}
     try:
-        report, usage = (_claude if option.provider == "claude" else _gemini)(image, option.id, key)
+        call = {"claude": _claude, "gemini": _gemini, "medgemma": _medgemma}[option.provider]
+        report, usage = call(image, option.id, key)
         report = normalise(report)
     except AnalysisError as e:
         return {"model": option.id, "label": option.label, "provider": option.provider, "error": str(e)}

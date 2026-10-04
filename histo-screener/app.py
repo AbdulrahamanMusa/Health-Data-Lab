@@ -94,9 +94,12 @@ def _key_status() -> dict:
 @reactive_output
 def meta():
     opts = providers.model_options()
+    if not providers.local_status()["ready"]:
+        reactive.invalidate_later(15)  # notice when Ollama starts or finishes downloading the model
     return {
         "models": [{"id": o.id, "provider": o.provider, "label": o.label, "note": o.note, "available": providers.available(o.provider, user_keys())} for o in opts],
         "keys": _key_status(),
+        "local": {**providers.local_status(), "host_is_local": providers.ollama_host().startswith(("http://127.0.0.1", "http://localhost"))},
         "samples": [{k: s[k] for k in ("id", "thumb", "reference_diagnosis", "reference_label", "site", "author", "license", "license_url", "source_url")} for s in images.samples()],
         "limits": {"per_session": MAX_PER_SESSION, "max_upload_mb": images.MAX_UPLOAD_MB},
     }
@@ -158,8 +161,8 @@ async def _analyse():
     if run_analysis.status() == "running":
         return
     models = [m for m in d["models"] if m in _options()][:2]
-    # Limits protect the server owner's bill; visitors using their own keys pay their own way.
-    on_server_key = [m for m in models if providers.resolve_key(_options()[m].provider, keys)[1] != "you"]
+    # Only runs on the host's own API keys cost the host money; visitor keys and the local model don't.
+    on_server_key = [m for m in models if providers.resolve_key(_options()[m].provider, keys)[1] == "server"]
     if not on_server_key:
         running_models.set(models)
         running_case.set(cid)

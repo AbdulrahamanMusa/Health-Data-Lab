@@ -44,7 +44,7 @@ function Disclaimer({ onAccept }: { onAccept: () => void }) {
         <p>This tool uses general-purpose AI models to describe histology images. Its output is <b>not a diagnosis</b> and must not be used for clinical decisions. Diagnosis requires a qualified pathologist reviewing the full specimen with clinical context.</p>
         <ul>
           <li>Do not upload images containing patient names, numbers or other identifiers.</li>
-          <li>Images are processed in memory for your session only and sent to the selected AI provider (Anthropic or Google) for analysis.</li>
+          <li>Images are processed in memory for your session only and sent to the selected AI provider (Anthropic or Google) for analysis, or, with MedGemma, analysed on the computer running this app without leaving it.</li>
           <li>Models can be wrong, including with high confidence.</li>
         </ul>
         <label className="check">
@@ -192,7 +192,7 @@ function CompareMode({ meta, ws }: { meta: Meta; ws: Workspace }) {
 
 type Toast = ToastMsg & { id: number };
 
-const hasOwnKey = (meta: Meta) => meta.keys.claude.source === "you" || meta.keys.gemini.source === "you";
+const hasOwnKey = (meta: Meta) => meta.keys.claude.source === "you" || meta.keys.gemini.source === "you" || meta.local.ready;
 
 function Shell() {
   const initialized = useShinyInitialized();
@@ -283,7 +283,7 @@ function Shell() {
           ))}
         </nav>
         <div className="bar-right">
-          <button className={`keybtn ${hasOwnKey(meta) ? "own" : ""}`} onClick={() => setKeysOpen(true)} title="Use your own Anthropic or Gemini API key">
+          <button className={`keybtn ${hasOwnKey(meta) ? "own" : ""}`} onClick={() => setKeysOpen(true)} title="Use your own Anthropic or Gemini API key, or the free local MedGemma model">
             <KeyRound size={14} />
             <span>API keys</span>
             <i className={`kdot ${hasOwnKey(meta) ? "on" : noModels ? "off" : ""}`} />
@@ -302,7 +302,7 @@ function Shell() {
       </header>
       {noModels && (
         <div className="banner">
-          <AlertTriangle size={15} /> To run AI analysis, add your own Anthropic or Gemini API key. You can browse slides and use Learn mode without one.
+          <AlertTriangle size={15} /> To run AI analysis, add your own Anthropic or Gemini API key, or set up the free MedGemma model. You can browse slides and use Learn mode without either.
           <button className="btn primary sm" onClick={() => setKeysOpen(true)}>
             <KeyRound size={14} /> Add API key
           </button>
