@@ -1,0 +1,86 @@
+[
+  {
+    "id": "fibroadenoma",
+    "file": "fibroadenoma.jpg",
+    "reference_diagnosis": "Fibroadenoma of the breast",
+    "reference_label": "benign",
+    "site": "Breast",
+    "source_title": "Histopathology of fibroadenoma with proliferating stroma.jpg",
+    "source_url": "https://commons.wikimedia.org/wiki/File:Histopathology_of_fibroadenoma_with_proliferating_stroma.jpg",
+    "author": "Mikael Häggström, M.D.",
+    "license": "CC0",
+    "license_url": "http://creativecommons.org/publicdomain/zero/1.0/deed.en"
+  },
+  {
+    "id": "lipoma",
+    "file": "lipoma.jpg",
+    "reference_diagnosis": "Submucosal lipoma",
+    "reference_label": "benign",
+    "site": "Gastrointestinal submucosa",
+    "source_title": "Histopathology of submucosal lipoma.jpg",
+    "source_url": "https://commons.wikimedia.org/wiki/File:Histopathology_of_submucosal_lipoma.jpg",
+    "author": "Mikael Häggström, M.D.",
+    "license": "CC0",
+    "license_url": "http://creativecommons.org/publicdomain/zero/1.0/deed.en"
+  },
+  {
+    "id": "leiomyoma",
+    "file": "leiomyoma.jpg",
+    "reference_diagnosis": "Uterine leiomyoma (palisading pattern)",
+    "reference_label": "benign",
+    "site": "Uterus",
+    "source_title": "Leiomyoma of Uterus with Palisading Pattern (5710417630).jpg",
+    "source_url": "https://commons.wikimedia.org/wiki/File:Leiomyoma_of_Uterus_with_Palisading_Pattern_(5710417630).jpg",
+    "author": "Ed Uthman from Houston, TX, USA",
+    "license": "CC BY 2.0",
+    "license_url": "https://creativecommons.org/licenses/by/2.0"
+  },
+  {
+    "id": "scc",
+    "file": "scc.jpg",
+    "reference_diagnosis": "Invasive squamous cell carcinoma",
+    "reference_label": "malignant",
+    "site": "Squamous epithelium",
+    "source_title": "Histopathology of invasive squamous cell carcinoma.jpg",
+    "source_url": "https://commons.wikimedia.org/wiki/File:Histopathology_of_invasive_squamous_cell_carcinoma.jpg",
+    "author": "Mikael Häggström, M.D.",
+    "license": "CC0",
+    "license_url": "http://creativecommons.org/publicdomain/zero/1.0/deed.en"
+  },
+  {
+    "id": "melanoma-ln",
+    "file": "melanoma-ln.jpg",
+    "reference_diagnosis": "Metastatic melanoma in a lymph node",
+    "reference_label": "malignant",
+    "site": "Lymph node",
+    "source_title": "Histopathology of a metastatic melanoma to a lymph node.jpg",
+    "source_url": "https://commons.wikimedia.org/wiki/File:Histopathology_of_a_metastatic_melanoma_to_a_lymph_node.jpg",
+    "author": "Mikael Häggström, M.D.",
+    "license": "CC0",
+    "license_url": "http://creativecommons.org/publicdomain/zero/1.0/deed.en"
+  },
+  {
+    "id": "colon-adenoca",
+    "file": "colon-adenoca.jpg",
+    "reference_diagnosis": "Colonic adenocarcinoma (biopsy)",
+    "reference_label": "malignant",
+    "site": "Colon",
+    "source_title": "Colon adenocarcinoma - biopsy, intermed. mag.1.jpg",
+    "source_url": "https://commons.wikimedia.org/wiki/File:Colon_adenocarcinoma_-_biopsy,_intermed._mag.1.jpg",
+    "author": "CoRus13",
+    "license": "CC BY-SA 4.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/4.0"
+  },
+  {
+    "id": "alt-wdl",
+    "file": "alt-wdl.jpg",
+    "reference_diagnosis": "Atypical lipomatous tumour / well-differentiated liposarcoma (lipoma-like)",
+    "reference_label": "malignant",
+    "site": "Soft tissue (adipose)",
+    "source_title": "Histopathology of an atypical lipomatous tumor or well-differentiated liposarcoma, lipoma-like subtype.jpg",
+    "source_url": "https://commons.wikimedia.org/wiki/File:Histopathology_of_an_atypical_lipomatous_tumor_or_well-differentiated_liposarcoma,_lipoma-like_subtype.jpg",
+    "author": "Mikael Häggström, M.D.",
+    "license": "CC0",
+    "license_url": "http://creativecommons.org/publicdomain/zero/1.0/deed.en"
+  }
+]

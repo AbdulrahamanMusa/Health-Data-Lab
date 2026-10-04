@@ -13,3 +13,24 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: 3.12.8
+
+  - type: web
+    name: histo-screener
+    runtime: python
+    plan: free
+    rootDir: histo-screener
+    buildCommand: pip install -r requirements.txt
+    startCommand: shiny run app.py --host 0.0.0.0 --port $PORT
+    healthCheckPath: /
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.8
+      # Secrets: Render asks for these when the Blueprint is applied; they never live in the repo.
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: MAX_ANALYSES_PER_SESSION
+        value: "20"
+      - key: MAX_ANALYSES_PER_DAY
+        value: "200"
