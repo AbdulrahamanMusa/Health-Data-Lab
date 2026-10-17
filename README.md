@@ -9,7 +9,7 @@ synthetic dataset you can explore and room to try your own.
 |---|---|---|---|
 | 1 | [Raw → Ready](week01-raw-to-ready/) | Never overwrite raw data: the cleaning log | see the blog post |
 | — | [Histopathology Screener](histo-screener/) | AI-assisted slide screening for research and education (Claude + Gemini) | see the blog post |
-| — | [MNCH Insight](mnch-dashboard/) | A DHIS2 Power BI report rebuilt in shinyreact, plus a facility risk forecast | see the blog post |
+| — | [MNCH Insight](mnch-dashboard/) | A DHIS2 Power BI report rebuilt in shinyreact, plus a facility risk forecast | [mnch-insight.onrender.com](https://mnch-insight.onrender.com/) |
 
 All bundled data is synthetic or from the public DHIS2 demo database. Do not upload identifiable health data to a
 public deployment without your organisation's approval (Nigeria Data

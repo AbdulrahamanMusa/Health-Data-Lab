@@ -1,5 +1,7 @@
 # MNCH Insight: a DHIS2 dashboard in Shiny for Python + React
 
+**Live app:** https://mnch-insight.onrender.com/ (free server: the first visit can take about a minute to wake up)
+
 A rebuild of the **DHIS2 MNCH Dashboard** Power BI report (`.pbip`) with
 [shinyreact](https://pypi.org/project/shinyreact/), plus a page the report doesn't
 have: a **facility risk forecast**.

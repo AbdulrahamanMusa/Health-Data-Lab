@@ -27,7 +27,9 @@ The two approaches complement each other: descriptive dashboards help us underst
 carefully validated risk estimates can help decide where to look first.
 
 🎬 The video shows both applications side by side.
+🚀 Try the Shiny app: https://mnch-insight.onrender.com/
 📖 The full project story, architecture and lessons learned: https://am-datasolution.com/posts/dhis2-interoperability-power-bi-shiny/
+💻 Code: https://github.com/AbdulrahamanMusa/Health-Data-Lab/tree/main/mnch-dashboard
 
 ⚠️ For education and demonstration only. The data come from the public DHIS2 demo database
 (Sierra Leone) and are not evidence of real facility performance. The model illustrates an
