@@ -34,3 +34,24 @@ services:
         value: "20"
       - key: MAX_ANALYSES_PER_DAY
         value: "200"
+
+  - type: web
+    name: mnch-insight
+    runtime: python
+    plan: free
+    rootDir: mnch-dashboard
+    buildCommand: pip install -r requirements.txt
+    startCommand: shiny run app.py --host 0.0.0.0 --port $PORT
+    healthCheckPath: /
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.8
+      - key: DHIS2_BASE_URL
+        value: https://play.im.dhis2.org/stable-2-42-6
+      - key: DHIS2_LIVE_ON_START
+        value: "1"
+      # Secrets: Render asks for these when the Blueprint is applied; they never live in the repo.
+      - key: DHIS2_USERNAME
+        sync: false
+      - key: DHIS2_PASSWORD
+        sync: false
